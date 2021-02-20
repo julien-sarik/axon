@@ -1,8 +1,25 @@
-## Goal
- Goal of Axon framework is to apply Event Sourcing, [CQRS](https://axoniq.io/resources/cqrs) and DDD concepts.
+## Concepts
+Goal of Axon framework is to apply Event Sourcing, [CQRS](https://axoniq.io/resources/cqrs) and DDD concepts.
+### event sourcing
+[Event Sourcing](https://axoniq.io/resources/event-sourcing) is a pattern for data storage, where instead of storing 
+the current state of any entity, all past changes to that state are stored.
+This allows:
+- audit
+- ability to build new views at any moment by replaying past events
+#### snapshot
+In case it's too long to build the latest state of entities based on all past events, Axon provide a [snapshotting]() feature 
+to allow recovering the latest state on an entity based on a snapshot and events that happened after the snapshot was taken.
+#### Replay events
+Axon provides a way to replay events.
+#### Upcasting
+Axon provides a way to nicely update the schema of an event while preserving the replay capability.
+### CQRS
+[CQRS](https://axoniq.io/resources/cqrs) is an architectural pattern which prescribes the decoupling of the command logic and the query logic.
+This allows to scale/store the query component independently from the command component.
+Query component get synchronized through events triggered by the command component.
 
 ## Axon server
-Axon server is the implementation of the Event store for this demo project.
+Axon server is the implementation of the Event store for this demo project. It also implement the message (command, event, query) routing solution.
 There are other event store implementations available e.g. MongoStore.
 More details [here](https://axoniq.io/blog-overview/eventstore)
 To run a local axon server:
@@ -55,3 +72,37 @@ List carts
 ``curl -i -X GET http://localhost:8080/foodCart``
 Create cart
 ``curl -i -X POST http://localhost:8080/foodCart/create``
+
+## Axon framework
+### Aggregate
+#### Multi entities aggregate
+The field that declares the child entity/entities must be annotated with `AggregateMember`. This annotation tells Axon that
+ the annotated field contains a class that should be inspected for message handlers.
+Axon provides the `EntityId` annotation specifying the identifying field of a child entity.
+@CommandHandler annotations are not limited to the aggregate root. Placing all command handlers in the root will sometimes 
+lead to a large number of methods on the aggregate root, while many of them simply forward the invocation to one of the underlying entities.
+If that is the case, you may place the @CommandHandler annotation on one of the underlying entities' methods.
+Note that each command must have exactly one handler in the aggregate. This means that you cannot annotate multiple entities 
+(either root nor not) with @CommandHandler which handle the same command type. In case you need to conditionally route a command to an entity, 
+the parent of these entities should handle the command, and forward it based on the conditions that apply.
+### Event processors
+Event processors allow to configure how events will be dispatch to event handlers. There are two types of event processors:
+- Subscribing processors: they are called by the thread publishing the event
+- Tracking processors: they pull image from the event store
+#### Tracking processors
+##### Token store
+Tracking event processors need a token store to store the progress of the event processing.
+Each message received by an event processor is tied to a token.
+SequencingPolicy
+##### parallelism for tracking processors
+The parallelism within a tracking processor is controlled by the number of segments that divides the processors.
+##### Sequencing policy
+Tracking processors have a sequencing policy to control the order in which events are processed.
+By default Axon uses `SequentialPerAggregatePolicy` which make sure that events published by the same aggregate are consumed sequentially.
+##### Multi-node processing
+Two processor instances with the same name will compose the same logical processor. Those processors will compete for processing events.
+A claim mechanism is used to prevent an event to be processed twice.
+##### Replay
+Axon allows to replay all past events (for instance to build a new view).
+To control the replay of the events Axon provides:
+- `AllowReplay` and `DisallowReplay` annotation to control what are the event handler to call when events are replayed.
