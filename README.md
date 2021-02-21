@@ -25,6 +25,10 @@ More details [here](https://axoniq.io/blog-overview/eventstore)
 To run a local axon server:
 `docker run --rm -d --name my-axon-server -p 8024:8024 -p 8124:8124 axoniq/axonserver`
 
+## mongodb
+The app stores tracking tokens in a mongo db.
+`docker run --rm --name mongo -d -p 27017:27017 mongo`
+
 ## core-api
 This package contains classes describing commands, events and queries.
 
@@ -69,9 +73,10 @@ response type from a class (`ResponseTypes.instanceOf()`) or to declare a type a
 
 ### requests
 List carts
-``curl -i -X GET http://localhost:8080/foodCart``
+`curl -i -X GET http://localhost:8080/foodCart`
+
 Create cart
-``curl -i -X POST http://localhost:8080/foodCart/create``
+`curl -i -X POST http://localhost:8080/foodCart/create`
 
 ## Axon framework
 ### Aggregate
@@ -93,7 +98,7 @@ Event processors allow to configure how events will be dispatch to event handler
 ##### Token store
 Tracking event processors need a token store to store the progress of the event processing.
 Each message received by an event processor is tied to a token.
-SequencingPolicy
+Default token store is in memory. Using an in memory token store will replay all events on restart.
 ##### parallelism for tracking processors
 The parallelism within a tracking processor is controlled by the number of segments that divides the processors.
 ##### Sequencing policy
