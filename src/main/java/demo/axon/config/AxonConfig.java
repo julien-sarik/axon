@@ -1,10 +1,13 @@
 package demo.axon.config;
 
 import com.mongodb.client.MongoClient;
+import demo.axon.command.interceptor.CommandDispatchInterceptor;
+import org.axonframework.commandhandling.CommandBus;
 import org.axonframework.extensions.mongo.DefaultMongoTemplate;
 import org.axonframework.extensions.mongo.MongoTemplate;
 import org.axonframework.extensions.mongo.eventsourcing.tokenstore.MongoTokenStore;
 import org.axonframework.serialization.Serializer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 public class AxonConfig {
 
     @Bean
-    public MongoTemplate mongoTemplate(MongoClient client) {
+    public MongoTemplate mongodbTemplate(MongoClient client) {
         final String databaseName = "axon";
         DefaultMongoTemplate mongoTemplate = DefaultMongoTemplate
                 .builder()
@@ -36,5 +39,10 @@ public class AxonConfig {
                 .mongoTemplate(mongoTemplate)
                 .serializer(serializer)
                 .build();
+    }
+
+    @Autowired
+    public void configureCommandInterceptors(CommandBus commandBus) {
+        commandBus.registerDispatchInterceptor(new CommandDispatchInterceptor());
     }
 }

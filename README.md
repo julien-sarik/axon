@@ -90,6 +90,16 @@ If that is the case, you may place the @CommandHandler annotation on one of the 
 Note that each command must have exactly one handler in the aggregate. This means that you cannot annotate multiple entities 
 (either root nor not) with @CommandHandler which handle the same command type. In case you need to conditionally route a command to an entity, 
 the parent of these entities should handle the command, and forward it based on the conditions that apply.
+### message interceptors
+There are two kind of interceptors:
+#### dispatch interceptors
+Intercept a message before it is dispatched to a message handler. The interceptor is invoked by the same thread that dispatch the command.
+#### handler interceptors
+Intercept the message just before it is handled. Because they are invoked after the message is dispatched the handler interceptors have access
+to the message.
+The `CommandHandlerInterceptor` annotation let's you define a handler interceptor on an aggregate's method.
+##### exception handler
+Methods annotated with `ExceptionHandler` will only handle exceptions thrown from message handling functions in the same class.
 ### Event processors
 Event processors allow to configure how events will be dispatch to event handlers. There are two types of event processors:
 - Subscribing processors: they are called by the thread publishing the event
