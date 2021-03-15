@@ -130,3 +130,11 @@ There are two kind of command dispatcher available as two interfaces
 The command bus is the component aware of which command handler to call for a particular command.
 #### command gateway 
 The command gateway is a wrapper on the command bus that provides a more friendly API to perform command synchronously
+### command handlers 
+A command handler is a method with the `CommandHandler` annotation.
+It is recommended to be placed in the aggregate class so that it has access to the state of the aggregate.
+In order for axon to know on which aggregate instance the command must be performed, the command class must have a field with the `TargetAggregateIdentifier` annotation, except for the event responsible for the aggregate creation.
+A command handler must
+1. Perform a business logic check
+2. Fire an event or throw an exception
+Update of the aggregate state must be performed in the event sourcing handlers because they are the ones responsible for sourcing the aggregate from events.
