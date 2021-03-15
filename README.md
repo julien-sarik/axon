@@ -104,6 +104,7 @@ Methods annotated with `ExceptionHandler` will only handle exceptions thrown fro
 Event processors allow to configure how events will be dispatch to event handlers. There are two types of event processors:
 - Subscribing processors: they are called by the thread publishing the event
 - Tracking processors: they pull image from the event store
+An event processor logical instance is identified by its name.
 #### Tracking processors
 ##### Token store
 Tracking event processors need a token store to store the progress of the event processing.
@@ -119,5 +120,6 @@ Two processor instances with the same name will compose the same logical process
 A claim mechanism is used to prevent an event to be processed twice.
 ##### Replay
 Axon allows to replay all past events (for instance to build a new view).
+To trigger a replay of events the `resetTokens()` method must be called on the `TrackingEventProcessor`.
 To control the replay of the events Axon provides:
 - `AllowReplay` and `DisallowReplay` annotation to control what are the event handler to call when events are replayed.
