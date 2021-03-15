@@ -123,3 +123,10 @@ Axon allows to replay all past events (for instance to build a new view).
 To trigger a replay of events the `resetTokens()` method must be called on the `TrackingEventProcessor`.
 To control the replay of the events Axon provides:
 - `AllowReplay` and `DisallowReplay` annotation to control what are the event handler to call when events are replayed.
+###  command dispatcher
+Each command is always sent to exactly one command handler. If no command handler is available for the dispatched command, a NoHandlerForCommandException exception is thrown by the command dispatcher.
+There are two kind of command dispatcher available as two interfaces 
+#### command bus
+The command bus is the component aware of which command handler to call for a particular command.
+#### command gateway 
+The command gateway is a wrapper on the command bus that provides a more friendly API to perform command synchronously
