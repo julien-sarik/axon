@@ -137,4 +137,5 @@ In order for axon to know on which aggregate instance the command must be perfor
 A command handler must
 1. Perform a business logic check
 2. Fire an event or throw an exception
+
 Update of the aggregate state must be performed in the event sourcing handlers because they are the ones responsible for sourcing the aggregate from events.
