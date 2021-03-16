@@ -139,3 +139,13 @@ A command handler must
 2. Fire an event or throw an exception
 
 Update of the aggregate state must be performed in the event sourcing handlers because they are the ones responsible for sourcing the aggregate from events.
+
+### repositories
+Repositories are in charge of storing the aggregates.
+The only way to retrieve an aggregate from a repository is through its id.
+There are two types of repositories
+1. Standard repositories: store the current full state of the aggregates
+2. Event sourcing repositories: store aggregate's events
+
+Note that the Repository interface does not prescribe a delete(identifier) method. Deleting aggregates is done by invoking the AggregateLifecycle.markDeleted() method from within an aggregate. Deleting an aggregate is a state migration like any other, with the only difference that it is irreversible in many cases.
+
