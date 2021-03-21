@@ -78,7 +78,8 @@ List carts
 Create cart
 `curl -i -X POST http://localhost:8080/foodCart/create`
 
-## Axon framework
+# Axon framework
+## Commands
 ### Aggregate
 #### Multi entities aggregate
 The field that declares the child entity/entities must be annotated with `AggregateMember`. This annotation tells Axon that
@@ -100,29 +101,6 @@ to the message.
 The `CommandHandlerInterceptor` annotation let's you define a handler interceptor on an aggregate's method.
 ##### exception handler
 Methods annotated with `ExceptionHandler` will only handle exceptions thrown from message handling functions in the same class.
-### Event processors
-Event processors allow to configure how events will be dispatch to event handlers. There are two types of event processors:
-- Subscribing processors: they are called by the thread publishing the event
-- Tracking processors: they pull image from the event store
-An event processor logical instance is identified by its name.
-#### Tracking processors
-##### Token store
-Tracking event processors need a token store to store the progress of the event processing.
-Each message received by an event processor is tied to a token.
-Default token store is in memory. Using an in memory token store will replay all events on restart.
-##### parallelism for tracking processors
-The parallelism within a tracking processor is controlled by the number of segments that divides the processors.
-##### Sequencing policy
-Tracking processors have a sequencing policy to control the order in which events are processed.
-By default Axon uses `SequentialPerAggregatePolicy` which make sure that events published by the same aggregate are consumed sequentially.
-##### Multi-node processing
-Two processor instances with the same name will compose the same logical processor. Those processors will compete for processing events.
-A claim mechanism is used to prevent an event to be processed twice.
-##### Replay
-Axon allows to replay all past events (for instance to build a new view).
-To trigger a replay of events the `resetTokens()` method must be called on the `TrackingEventProcessor`.
-To control the replay of the events Axon provides:
-- `AllowReplay` and `DisallowReplay` annotation to control what are the event handler to call when events are replayed.
 ###  command dispatcher
 Each command is always sent to exactly one command handler. If no command handler is available for the dispatched command, a NoHandlerForCommandException exception is thrown by the command dispatcher.
 There are two kind of command dispatcher available as two interfaces 
@@ -149,3 +127,78 @@ There are two types of repositories
 
 Note that the Repository interface does not prescribe a delete(identifier) method. Deleting aggregates is done by invoking the AggregateLifecycle.markDeleted() method from within an aggregate. Deleting an aggregate is a state migration like any other, with the only difference that it is irreversible in many cases.
 
+## Events
+### dispatching events
+Events can be dispatched from either an aggregate or from the event bus.
+#### dispatching events from an aggregate
+To publish an event from an Aggregate, it is required to do this from the lifecycle of the Aggregate instance. This is mandatory as we want the Aggregate identifier to be tied to the Event message. This is done through the `AggregateLifecycle.apply()` method. This method will use reflexivity to add the aggregate identifier and the sequence number into  the event message. The method will send notify the event sourcing handlers and finally publish the event into the event bus.
+#### dispatching events from the event bus
+In the vast majority of cases, the Aggregates will publish events by applying them. However, occasionally, it is necessary to publish from the `EventGateway` using its `publish()` method.
+### event handlers
+Creating an event handler is done by adding the `EventHandler` annotation on a method. The declared parameters of the method will specify the events received.
+- The first parameter will be resolved as the payload of the event.
+- Parameters with the `MetaDataValue` annotation will correspond to some field extracted from the event metadata.
+- A parameter of type `MetaData` will contains the entire metadata of the event.
+- A paremeter annotated with `SequenceNumber` and of type `long` will contains the sequence number of the event. The sequence number provides the ordering of the event within the scope of the aggregate. Sequence number only concernes domain event message which are the events fired from an aggregate. Events fired directly from the event bus will not contain any sequence number.
+- other parameters can be injected, this list is not exhaustive
+
+At most one event handler is invoked per ??? instance. If many method can handle the event the most specific one is chosen.
+### Event processors
+Event processors allow to configure how events will be dispatch to event handlers. There are two types of event processors:
+- Subscribing processors: they are called by the thread publishing the event
+- Tracking processors: they pull events from an event store
+All processors have a name, which identifies a processor instance across JVM instances. Two processors with the same name are considered as two instances of the same processor.
+An event processor can be configured to pull events from many event stores.
+#### error handling
+
+#### Tracking processors
+##### Token store
+Tracking event processors need a token store to store the progress of the event processing.
+Each message received by an event processor is tied to a token.
+Default token store is in memory. Using an in memory token store will replay all events on restart.
+##### parallelism for tracking processors
+The parallelism within a tracking processor is controlled by the number of segments that divides the processors.
+##### Sequencing policy
+Tracking processors have a sequencing policy to control the order in which events are processed.
+By default Axon uses `SequentialPerAggregatePolicy` which make sure that events published by the same aggregate are consumed sequentially.
+##### Multi-node processing
+Two processor instances with the same name will compose the same logical processor. Those processors will compete for processing events.
+A claim mechanism is used to prevent an event to be processed twice.
+##### Replay
+Axon allows to replay all past events (for instance to build a new view).
+To trigger a replay of events the `resetTokens()` method must be called on the `TrackingEventProcessor`.
+To control the replay of the events Axon provides:
+- `AllowReplay` and `DisallowReplay` annotation to control what are the event handler to call when events are replayed.
+
+### event bus
+The EventBus is the mechanism that dispatches events to the subscribed event handlers. Axon provides three implementations of the Event Bus: AxonServerEventStore, EmbeddedEventStore and SimpleEventBus. All three implementations support subscribing and tracking processors.
+However, the AxonServerEventStore and EmbeddedEventStore persist events (see Event Store), which allows to replay them at a later stage. The SimpleEventBus has a volatile storage and 'forgets' events as soon as they have been published to subscribed components.
+An AxonServerEventStore event bus/store is configured by default.
+### event store
+An event store offers the functionality of an event bus. Additionally, it persists published events and is able to retrieve previous events based on a given aggregate identifier.
+#### Axon server as an event store
+Axon provides an event store out of the box, the AxonServerEventStore. It connects to the AxonIQ AxonServer Server to store and retrieve Events.
+#### embedded event store
+Alternatively, Axon provides a non-axon-server option, the EmbeddedEventStore. It delegates the actual storage and retrieval of events to an EventStorageEngine. Available impementations are `JpaEventStorageEngine`, `MongoEventStorageEngine`.
+##### mongo store
+Events are stored in two separate collections: one for the event streams and one for snapshots.
+### versioning
+In the lifecycle of an Axon application events will typically change their format. As events are stored indefinitely the application should be able to cope with several versions of an event.
+#### event upcasting
+Due to the ever-changing nature of software applications it is likely that event definitions will also change over time. Since the Event Store is considered a read and append-only data source, your application must be able to read all events, regardless of when they were added. This is where upcasting comes in.
+Upcasting is the action of rewriting an event from an old version to a new version.
+Manually written upcasters have to be provided to specify how to upcast an event.
+An Upcaster class takes an event in version n and upcast it into (zero, one or more) events of version n+1.
+Upcasters are processed in a chain, meaning that the output of one upcaster is sent to the input of the next. This allows to update events in an incremental manner, writing an upcaster for each new event revision, making them small, isolated, and easy to understand.
+To allow an upcaster to see what version of serialized object they are receiving, the Event Store stores a revision number as well as the fully qualified name of the Event. This revision number is generated by a `RevisionResolver`, configured in the serializer. Axon provides several implementations of the `RevisionResolver` :
+The most handful one is the `AnnotationRevisionResolver` that checks for an `@Revision` annotation on the Event payload.
+Axon's upcasters do not work with the EventMessage directly, but with the `IntermediateEventRepresentation` class.
+The IntermediateEventRepresentation provides functionality to retrieve all necessary fields to construct an EventMessage, together with the actual upcast functions. The actual representation of the events in the upcast function may vary based on the event serializer used.
+The `Upcaster` interface expose the `upcast()` method that accept and returns a `Stream` of `IntermediateEventRepresentation`. allowing chaining. 
+`SingleEventUpcaster` is a simple abstract implementation of an `Upcaster` that performs a one-to-one transformation of a `IntermediateEventRepresentation`. Extending from this implementation requires one to implement a `canUpcast` and `doUpcast` function
+## Queries
+## Serializer
+Serializers come in several flavors in the Axon Framework and are used for a variety of subjects. Currently you can choose between the XStreamSerializer, JacksonSerializer and JavaSerializer to serialize messages (commands/queries/events), tokens, snapshots and sagas in an Axon application.
+Event stores need a way to serialize the event to prepare it for storage. By default, Axon uses the XStreamSerializer, which uses XStream to serialize events into XML. Alternatively, Axon also provides the JacksonSerializer, which uses Jackson to serialize events into JSON.
+You may also implement your own serializer, simply by creating a class that implements Serializer, and configuring the event store to use that implementation instead of the default.
+You can setup a serializer to handle events, another one to handler commands and queries and a third one to handle tokens, snapshots and sagas.
