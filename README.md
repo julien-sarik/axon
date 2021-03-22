@@ -125,10 +125,17 @@ Each command is always sent to exactly one command handler. If no command handle
 There are two kind of command dispatcher available as two interfaces 
 #### command bus
 The command bus is the component aware of which command handler to call for a particular command.
+Available implementations:
+- AxonServerCommandBus: Axon provides a command bus out of the box, the AxonServerCommandBus. It connects to the AxonIQ AxonServer Server to submit and receive Commands. AxonServerCommandBus is a distributed command bus. It uses a SimpleCommandBus to handle incoming commands on different JVM's by default.
+- SimpleCommandBus: The SimpleCommandBus is, as the name suggests, the simplest implementation. It does straightforward processing of commands in the thread that dispatches them. After a command is processed, the modified aggregate(s) are saved and generated events are published in that same thread. In most scenarios, such as web applications, this implementation will suit your needs.
 #### command gateway 
 The command gateway is a wrapper on the command bus that provides a more friendly API to perform command synchronously
 #### Command Dispatching Results
 Command handler should not return result as it means the message should be a query. Exception is a command creating an aggregate. Indeed in such case the query bus will return the AggregateIdentifier of the created aggregate.
+#### RetryScheduler
+The RetryScheduler is capable of scheduling retries when command execution has failed. The retry scheduler is only invoked when a command fails due to a RuntimeException. Checked exceptions are regarded as a "business exception" and will never trigger a retry.
+#### CommandDispatchInterceptor
+
 ### command handlers 
 A command handler is a method with the `CommandHandler` annotation.
 It is recommended to be placed in the aggregate class so that it has access to the state of the aggregate.
