@@ -81,16 +81,76 @@ Create cart
 # Axon framework
 ## Commands
 ### Aggregate
+An Aggregate is a regular object, which contains state and methods to alter that state. 
+By default, Axon will configure Aggregates as an 'Event Sourced' Aggregates.
+An aggregate class contains:
+1. a field annotated with `AggregateIdentifier`: in order for Axon to know which aggregate instance a command is tarfeting
+2. `CommandHandler` annotated methods/constuctor: known as command handlers those functions handle command of the type specified by their first parameter. Handlers perform business logic then publish an even through `AggregateLifecycle` functions
+3. methods with `EventSourcingHandler` annotation
+4. A no-arg constructor, which is required by Axon to create an empty aggregate instance before initializing it using past Events.
+#### Aggraeate lifecycle operations
+`AggregateLifecycle` Axon class provides function to
+- `apply(Objecy)`: publish an event message on the event bus.such that it is known to have originated from the Aggregate executing the operation.
+-  `createNew(Class, Callable)`: Instantiate a new Aggregate of the specified class through the given `Callable`
+- `isLive()`: Check to verify whether the Aggregate is in a 'live' state. An Aggregate is regarded to be 'live' if it has finished replaying historic events to recreate it's state.
+- `markDeleted()`: Will mark the Aggregate instance calling the function as being 'deleted'. Useful if the domain specifies a given Aggregate can be removed/deleted/closed, after which it should no longer be allowed to handle any Commands. This function should be called from an @EventSourcingHandler annotated function to ensure that being marked deleted is part of that Aggregate's state.
 #### Multi entities aggregate
-The field that declares the child entity/entities must be annotated with `AggregateMember`. This annotation tells Axon that
- the annotated field contains a class that should be inspected for message handlers.
-Axon provides the `EntityId` annotation specifying the identifying field of a child entity.
-@CommandHandler annotations are not limited to the aggregate root. Placing all command handlers in the root will sometimes 
+Complex business logic often requires more than what an Aggregate with only an Aggregate Root can provide. In that case, it is important that the complexity is spread over a number of 'Entities' within the aggregate.
+There are two important annotations to be used with multi-eity aggregate:
+1. The field that declares the child entity/entities must be annotated with `AggregateMember`. This annotation tells Axon that
+ the annotated field contains a class that should be inspected for message handlers. The child member can be an object, or an `Iterable`.
+2. the `EntityId` annotation specifying the identifying field of a child entity. Required to be able to route a command message to the correct entity instance. The property on the payload that will be used to find the entity that the message should be routed to, defaults to the name of the @EntityId annotated field. For example, when annotating the field transactionId, the command must define a property with that same name, which means either a transactionId or a getTransactionId() method must be present. If the name of the field and the routing property differ, you may provide a value explicitly using @EntityId(routingKey = "customRoutingProperty"). This annotation is mandatory on the Entity implementation if it will be part of a Collection or Map of child entities. 
+
+`CommandHandler` and `EventSourcingHandler` annotations are not limited to the aggregate root. Placing all command handlers in the root will sometimes 
 lead to a large number of methods on the aggregate root, while many of them simply forward the invocation to one of the underlying entities.
 If that is the case, you may place the @CommandHandler annotation on one of the underlying entities' methods.
 Note that each command must have exactly one handler in the aggregate. This means that you cannot annotate multiple entities 
 (either root nor not) with @CommandHandler which handle the same command type. In case you need to conditionally route a command to an entity, 
 the parent of these entities should handle the command, and forward it based on the conditions that apply.
+
+The creation of the Entity takes place in an event sourcing handler of it's parent. It is thus not possible to have a 'command handling constructor' on the entity class as with the aggregate root.
+
+The `AggregateMember` annotation has a `eventForwardingMode` parameter to specify to which condition sourcing event will be forwarded to child entities. Default behavior is ForwardAll which means the EventSourcingHandler method of a child entity will be called even if the entity instance doesn't match the EntityId of the event.
+#### State Stored Aggregates
+Instead of using event sourced aggregate (for which the current state is computed by replaying all past events) Axon allows to store aggregates as-is with their entire state. In such case Aggregates are read from a Jpa repository.
+#### Aggregate creation from another aggregate
+As a reaction of handling a command a command handler can create another aggregate through the `AggregateLifecycle.createNew()` function.
+The child aggregate would still have to publish it's creation event in its constuctor so that the aggregate can be event sourced.
+#### Conflict resolution
+Axon uses optimistic locking to avoid conflict when two commands are applied at the same time.
+The `TargetAggregateVersion` annotation can be used on an aggregate and command's field of type Long.
+To avoid unecessarilly rejecting a command a command handler accept a parameter of type `ConflictResolver` that contains a `detectConflicts(Predicate<List<DomainEventMessage<?>>>)` method to specify which case should be considered as a conflict.
+###  command dispatcher
+Each command is always sent to exactly one command handler. If no command handler is available for the dispatched command, a NoHandlerForCommandException exception is thrown by the command dispatcher.
+There are two kind of command dispatcher available as two interfaces 
+#### command bus
+The command bus is the component aware of which command handler to call for a particular command.
+#### command gateway 
+The command gateway is a wrapper on the command bus that provides a more friendly API to perform command synchronously
+#### Command Dispatching Results
+Command handler should not return result as it means the message should be a query. Exception is a command creating an aggregate. Indeed in such case the query bus will return the AggregateIdentifier of the created aggregate.
+### command handlers 
+A command handler is a method with the `CommandHandler` annotation.
+It is recommended to be placed in the aggregate class so that it has access to the state of the aggregate.
+In order for axon to know on which aggregate instance the command must be performed, the command class must have a field with the `TargetAggregateIdentifier` annotation, except for the event responsible for the aggregate creation.
+A command handler must
+1. Perform a business logic check
+2. Fire an event or throw an exception
+
+Update of the aggregate state must be performed in the event sourcing handlers because they are the ones responsible for sourcing the aggregate from events.
+#### creation policy
+Axon provides a `CreationPolicy` annotation to be placed on a command handler. Possible values
+- ALWAYS: the command will always create a new aggregate
+- CREATE_IF_MISSING: the command will create a new aggregate if no aggregate with the specified id could be found
+- NEVER: a command will only be handled by an existing aggregate
+### repositories
+Repositories are in charge of storing the aggregates.
+The only way to retrieve an aggregate from a repository is through its id.
+There are two types of repositories
+1. Standard repositories: store the current full state of the aggregates
+2. Event sourcing repositories: Those repositories do not store the aggregate itself, but the series of events generated by the aggregate. Based on these events, the state of an aggregate can be restored at any time.
+
+Note that the Repository interface does not prescribe a delete(identifier) method. Deleting aggregates is done by invoking the AggregateLifecycle.markDeleted() method from within an aggregate. Deleting an aggregate is a state migration like any other, with the only difference that it is irreversible in many cases.
 ### message interceptors
 There are two kind of interceptors:
 #### dispatch interceptors
@@ -101,31 +161,6 @@ to the message.
 The `CommandHandlerInterceptor` annotation let's you define a handler interceptor on an aggregate's method.
 ##### exception handler
 Methods annotated with `ExceptionHandler` will only handle exceptions thrown from message handling functions in the same class.
-###  command dispatcher
-Each command is always sent to exactly one command handler. If no command handler is available for the dispatched command, a NoHandlerForCommandException exception is thrown by the command dispatcher.
-There are two kind of command dispatcher available as two interfaces 
-#### command bus
-The command bus is the component aware of which command handler to call for a particular command.
-#### command gateway 
-The command gateway is a wrapper on the command bus that provides a more friendly API to perform command synchronously
-### command handlers 
-A command handler is a method with the `CommandHandler` annotation.
-It is recommended to be placed in the aggregate class so that it has access to the state of the aggregate.
-In order for axon to know on which aggregate instance the command must be performed, the command class must have a field with the `TargetAggregateIdentifier` annotation, except for the event responsible for the aggregate creation.
-A command handler must
-1. Perform a business logic check
-2. Fire an event or throw an exception
-
-Update of the aggregate state must be performed in the event sourcing handlers because they are the ones responsible for sourcing the aggregate from events.
-
-### repositories
-Repositories are in charge of storing the aggregates.
-The only way to retrieve an aggregate from a repository is through its id.
-There are two types of repositories
-1. Standard repositories: store the current full state of the aggregates
-2. Event sourcing repositories: Those repositories do not store the aggregate itself, but the series of events generated by the aggregate. Based on these events, the state of an aggregate can be restored at any time.
-
-Note that the Repository interface does not prescribe a delete(identifier) method. Deleting aggregates is done by invoking the AggregateLifecycle.markDeleted() method from within an aggregate. Deleting an aggregate is a state migration like any other, with the only difference that it is irreversible in many cases.
 
 ## Events
 ### dispatching events
