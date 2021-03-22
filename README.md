@@ -197,8 +197,34 @@ The IntermediateEventRepresentation provides functionality to retrieve all neces
 The `Upcaster` interface expose the `upcast()` method that accept and returns a `Stream` of `IntermediateEventRepresentation`. allowing chaining. 
 `SingleEventUpcaster` is a simple abstract implementation of an `Upcaster` that performs a one-to-one transformation of a `IntermediateEventRepresentation`. Extending from this implementation requires one to implement a `canUpcast` and `doUpcast` function
 ## Queries
+### query dispatcher
+#### query bus
+The QueryBus is the mechanism that dispatches queries to query handlers. Queries are registered using the combination of the query request name and query response type. It is possible to register multiple handlers for the same request-response combination.
+Implementations:
+- AxonServerQueryBus: is a distributed query bus based on Axon server
+- SimpleQueryBus: does straightforward processing of queries in the thread that dispatches them
+#### query gateway
+The QueryGateway is a convenient interface towards the query dispatching mechanism. It abstracts certain aspects for you, like the necessity to wrap a Query payload in a Query Message.
+#### query types
+##### point to point (a.k.a direct) queries
+Represents a query request to a single query handler.
+The response of sending a query is a Java CompletableFuture,
+which depending on the type of the query bus may be resolved immediately.
+However, if a @QueryHandler annotated function's return type is CompletableFuture,
+the result will be returned asynchronously regardless of the type of the query bus.
+##### Scatter-Gather
+When you want responses from all of the query handlers matching your query message, the scatter-gather query is the type to use. As a response to that query a stream of results is returned. This stream contains a result from each handler that successfully handled the query, in unspecified order. In case there are no handlers for the query, or all handlers threw an exception while handling the request, the stream is empty.
+##### Subscription queries
+The subscription query allows a client to get the initial state of the model it wants to query, and to stay up-to-date as the queried view model changes. In short it is an invocation of the Direct Query with the possibility to be updated when the initial state changes. To update a subscription with changes to the model, we will use the `QueryUpdateEmitter` component provided by Axon and used in an event handler.
+### query handler
+A Query Handler is a (singleton) object containing `@QueryHandler` annotated functions returning the query's response.
+The following information defines a given query handling function:
+1. The first parameter of the method is the query payload.
+2. The methods response type is the query's response type.
+3. The value of the queryName field in the annotation as the query's name (this is optional and in its absence will default to the query payload).
+At most one query handler method is invoked per query handling. Axon will search for the most specific method to invoke based on query input and result type..
 ## Serializer
-Serializers come in several flavors in the Axon Framework and are used for a variety of subjects. Currently you can choose between the XStreamSerializer, JacksonSerializer and JavaSerializer to serialize messages (commands/queries/events), tokens, snapshots and sagas in an Axon application.
+Serializers come in several flavors in the Axon Framework and are use.d for a variety of subjects. Currently you can choose between the XStreamSerializer, JacksonSerializer and JavaSerializer to serialize messages (commands/queries/events), tokens, snapshots and sagas in an Axon application.
 Event stores need a way to serialize the event to prepare it for storage. By default, Axon uses the XStreamSerializer, which uses XStream to serialize events into XML. Alternatively, Axon also provides the JacksonSerializer, which uses Jackson to serialize events into JSON.
 You may also implement your own serializer, simply by creating a class that implements Serializer, and configuring the event store to use that implementation instead of the default.
 You can setup a serializer to handle events, another one to handler commands and queries and a third one to handle tokens, snapshots and sagas.

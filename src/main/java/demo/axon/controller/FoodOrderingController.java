@@ -25,6 +25,7 @@ class FoodOrderingController {
     public FoodOrderingController(CommandGateway commandGateway, QueryGateway queryGateway) {
         this.commandGateway = commandGateway;
         this.queryGateway = queryGateway;
+        queryGateway.
     }
 
     @PostMapping("/create")
