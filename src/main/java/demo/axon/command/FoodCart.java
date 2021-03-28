@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-@Aggregate
+@Aggregate(snapshotTriggerDefinition = "FoodCartSnapshotTrigger")
 class FoodCart {
 
     private static final Logger logger = LoggerFactory.getLogger(FoodCart.class);

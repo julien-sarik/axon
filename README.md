@@ -23,11 +23,15 @@ Axon server is the implementation of the Event store for this demo project. It a
 There are other event store implementations available e.g. MongoStore.
 More details [here](https://axoniq.io/blog-overview/eventstore)
 To run a local axon server:
-`docker run --rm -d --name my-axon-server -p 8024:8024 -p 8124:8124 axoniq/axonserver`
+```
+docker run --rm -d --name my-axon-server -p 8024:8024 -p 8124:8124 axoniq/axonserver
+```
 
 ## mongodb
 The app stores tracking tokens in a mongo db.
-`docker run --rm --name mongo -d -p 27017:27017 mongo`
+```
+docker run --rm --name mongo -d -p 27017:27017 mongo
+```
 
 ## core-api
 This package contains classes describing commands, events and queries.
@@ -73,11 +77,20 @@ response type from a class (`ResponseTypes.instanceOf()`) or to declare a type a
 
 ### requests
 List carts
-`curl -i -X GET http://localhost:8080/foodCart`
+```
+curl -i -X GET http://localhost:8080/foodCart
+```
 
 Create cart
-`curl -i -X POST http://localhost:8080/foodCart/create`
+```
+curl -i -X POST http://localhost:8080/foodCart/create
+```
 
+Select a product
+```
+curl -i -X POST http://localhost:8080/foodCart/{card-id}/select/{product-id}/quantity/2
+
+```
 # Axon framework
 ## Commands
 ### Aggregate
@@ -270,3 +283,9 @@ Serializers come in several flavors in the Axon Framework and are use.d for a va
 Event stores need a way to serialize the event to prepare it for storage. By default, Axon uses the XStreamSerializer, which uses XStream to serialize events into XML. Alternatively, Axon also provides the JacksonSerializer, which uses Jackson to serialize events into JSON.
 You may also implement your own serializer, simply by creating a class that implements Serializer, and configuring the event store to use that implementation instead of the default.
 You can setup a serializer to handle events, another one to handler commands and queries and a third one to handle tokens, snapshots and sagas.
+## Tuning
+### Snapshotting
+By regularly creating and storing a snapshot event, the event store does not have to return long lists of events. Just the latest snapshot events and all events that occurred after the snapshot was made.
+The definition of when snapshots should be created, is provided by the `SnapshotTriggerDefinition` interface.
+The `EventCountSnapshotTriggerDefinition` provides the mechanism to trigger snapshot creation when the number of events needed to load an aggregate exceeds a certain threshold.
+A `Snapshotter` is responsible for the actual creation of a snapshot. Typically, snapshotting is a process that should disturb the operational processes as little as possible. Therefore, it is recommended to run the snapshotter in a different thread. Axon provides the `AggregateSnapshotter`, which creates and stores AggregateSnapshot instances. This is a special type of snapshot, since it contains the actual aggregate instance within it. The repositories provided by Axon are aware of this type of snapshot, and will extract the aggregate from it, instead of instantiating a new one. All events loaded after the snapshot events are streamed to the extracted aggregate instance.

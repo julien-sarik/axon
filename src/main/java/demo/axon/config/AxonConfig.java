@@ -3,6 +3,9 @@ package demo.axon.config;
 import com.mongodb.client.MongoClient;
 import demo.axon.command.interceptor.CommandDispatchInterceptor;
 import org.axonframework.commandhandling.CommandBus;
+import org.axonframework.eventsourcing.EventCountSnapshotTriggerDefinition;
+import org.axonframework.eventsourcing.SnapshotTriggerDefinition;
+import org.axonframework.eventsourcing.Snapshotter;
 import org.axonframework.extensions.mongo.DefaultMongoTemplate;
 import org.axonframework.extensions.mongo.MongoTemplate;
 import org.axonframework.extensions.mongo.eventsourcing.tokenstore.MongoTokenStore;
@@ -44,5 +47,11 @@ public class AxonConfig {
     @Autowired
     public void configureCommandInterceptors(CommandBus commandBus) {
         commandBus.registerDispatchInterceptor(new CommandDispatchInterceptor());
+    }
+
+    @Bean(name = "FoodCartSnapshotTrigger")
+    public SnapshotTriggerDefinition snapshotTrigger(Snapshotter snapshotter) {
+        // trigger a snapshot creation each time a given number of events occurred for a particular aggregate instance
+        return new EventCountSnapshotTriggerDefinition(snapshotter, 5);
     }
 }
