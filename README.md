@@ -212,7 +212,7 @@ Tracking event processors need a token store to store the progress of the event 
 Each message received by an event processor is tied to a token.
 Default token store is in memory. Using an in memory token store will replay all events on restart.
 ##### parallelism for tracking processors
-The parallelism within a tracking processor is controlled by the number of segments that divides the processors.
+The parallelism within a tracking processor is controlled by the number of segments that divides the processors. Segments separate the events in the stream across threads.
 ##### Sequencing policy
 Tracking processors have a sequencing policy to control the order in which events are processed.
 By default Axon uses `SequentialPerAggregatePolicy` which make sure that events published by the same aggregate are consumed sequentially.
@@ -288,4 +288,5 @@ You can setup a serializer to handle events, another one to handler commands and
 By regularly creating and storing a snapshot event, the event store does not have to return long lists of events. Just the latest snapshot events and all events that occurred after the snapshot was made.
 The definition of when snapshots should be created, is provided by the `SnapshotTriggerDefinition` interface.
 The `EventCountSnapshotTriggerDefinition` provides the mechanism to trigger snapshot creation when the number of events needed to load an aggregate exceeds a certain threshold.
-A `Snapshotter` is responsible for the actual creation of a snapshot. Typically, snapshotting is a process that should disturb the operational processes as little as possible. Therefore, it is recommended to run the snapshotter in a different thread. Axon provides the `AggregateSnapshotter`, which creates and stores AggregateSnapshot instances. This is a special type of snapshot, since it contains the actual aggregate instance within it. The repositories provided by Axon are aware of this type of snapshot, and will extract the aggregate from it, instead of instantiating a new one. All events loaded after the snapshot events are streamed to the extracted aggregate instance.
+#### Implementation details
+A `Snapshotter` is responsible for the actual creation of a snapshot. Typically, snapshotting is a process that should disturb the operational processes as little as possible. Therefore, it is recommended to run the snapshotter in a different thread. Axon provides the `AggregateSnapshotter`, which creates and stores AggregateSnapshot instances. This is a special type of snapshot, since it contains the actual aggregate instance within it. The repositories provided by Axon are aware of this type of snapshot, and will extract the aggregate from it, instead of instantiating a new one. All events loaded after the snapshot events are streamed to the extracted aggregate instance. If `AggregateSnapshotter` is not used then a snapshot is considered as any other event and the aggregate must provide a handler to tell Axon how to source the aggregate from a snapshot.
