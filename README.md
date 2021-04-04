@@ -203,6 +203,7 @@ Event processors allow to configure how events will be dispatch to event handler
 - Subscribing processors: they are called by the thread publishing the event
 - Tracking processors: they pull events from an event store
 All processors have a name, which identifies a processor instance across JVM instances. Two processors with the same name are considered as two instances of the same processor.
+ By default event handlers are attached to a processor whose name is the package name of the Event Handler's class.
 An event processor can be configured to pull events from many event stores.
 #### error handling
 
