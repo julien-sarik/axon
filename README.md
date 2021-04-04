@@ -290,3 +290,6 @@ The definition of when snapshots should be created, is provided by the `Snapshot
 The `EventCountSnapshotTriggerDefinition` provides the mechanism to trigger snapshot creation when the number of events needed to load an aggregate exceeds a certain threshold.
 #### Implementation details
 A `Snapshotter` is responsible for the actual creation of a snapshot. Typically, snapshotting is a process that should disturb the operational processes as little as possible. Therefore, it is recommended to run the snapshotter in a different thread. Axon provides the `AggregateSnapshotter`, which creates and stores AggregateSnapshot instances. This is a special type of snapshot, since it contains the actual aggregate instance within it. The repositories provided by Axon are aware of this type of snapshot, and will extract the aggregate from it, instead of instantiating a new one. All events loaded after the snapshot events are streamed to the extracted aggregate instance. If `AggregateSnapshotter` is not used then a snapshot is considered as any other event and the aggregate must provide a handler to tell Axon how to source the aggregate from a snapshot.
+## Testing
+### command model testing
+The `FixtureConfiguration` class offers a given-when-then API to test the result of a command after simulating some past events.
