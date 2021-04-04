@@ -1,4 +1,4 @@
-## Concepts
+# Axon concepts
 Goal of Axon framework is to apply Event Sourcing, [CQRS](https://axoniq.io/resources/cqrs) and DDD concepts.
 ### event sourcing
 [Event Sourcing](https://axoniq.io/resources/event-sourcing) is a pattern for data storage, where instead of storing 
@@ -18,15 +18,15 @@ Axon provides a way to nicely update the schema of an event while preserving the
 This allows to scale/store the query component independently from the command component.
 Query component get synchronized through events triggered by the command component.
 
+# Demo application
 ## Axon server
-Axon server is the implementation of the Event store for this demo project. It also implement the message (command, event, query) routing solution.
-There are other event store implementations available e.g. MongoStore.
+Axon server is the implementation of the Event store for this demo project. It also implements the message (command, event, query) routing solution.
+There are other event stores implementations available e.g. MongoStore.
 More details [here](https://axoniq.io/blog-overview/eventstore)
 To run a local axon server:
 ```
 docker run --rm -d --name my-axon-server -p 8024:8024 -p 8124:8124 axoniq/axonserver
 ```
-
 ## mongodb
 The app stores tracking tokens in a mongo db.
 ```
@@ -36,7 +36,7 @@ docker run --rm --name mongo -d -p 27017:27017 mongo
 ## core-api
 This package contains classes describing commands, events and queries.
 
-## Command
+## command
 Commands are messages that are muting the state of the application entities.
 With Axon framework all the command logic is written into Aggregate classes.
 An Axon aggregate is a class representing an entity sourced from events.
@@ -63,9 +63,8 @@ In order to be able to handle the queries two things are needed:
 Those methods are called by Axon framework namely the event and query buses. They should not be explicitly called from the application code.
 Classes defined in `query` package should be package private to enforce segregation with the `command` package.
 
-
 ## controller
-The controller interacts with Axon through the `CommandGateway` and the `QueryGateway`. Those are two classes that define user-friendle API
+The controller interacts with Axon through the `CommandGateway` and the `QueryGateway`. Those are two classes that define user-friendly API
 to interact with the command and event buses.
 The command gateway defines:
 - a `send()` method that accepts a command and returns a `CompletableFuture`
