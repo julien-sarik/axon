@@ -1,14 +1,20 @@
 package demo.axon.config;
 
 import com.mongodb.client.MongoClient;
-import demo.axon.command.interceptor.CommandDispatchInterceptor;
+import demo.axon.interceptor.CorrelationLoggingInterceptor;
 import org.axonframework.commandhandling.CommandBus;
+import org.axonframework.config.Configurer;
+import org.axonframework.eventhandling.EventBus;
 import org.axonframework.eventsourcing.EventCountSnapshotTriggerDefinition;
 import org.axonframework.eventsourcing.SnapshotTriggerDefinition;
 import org.axonframework.eventsourcing.Snapshotter;
 import org.axonframework.extensions.mongo.DefaultMongoTemplate;
 import org.axonframework.extensions.mongo.MongoTemplate;
 import org.axonframework.extensions.mongo.eventsourcing.tokenstore.MongoTokenStore;
+import org.axonframework.messaging.Message;
+import org.axonframework.messaging.correlation.CorrelationDataProvider;
+import org.axonframework.messaging.correlation.MessageOriginProvider;
+import org.axonframework.queryhandling.QueryBus;
 import org.axonframework.serialization.Serializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -45,13 +51,24 @@ public class AxonConfig {
     }
 
     @Autowired
-    public void configureCommandInterceptors(CommandBus commandBus) {
-        commandBus.registerDispatchInterceptor(new CommandDispatchInterceptor());
+    public void configureCommandInterceptors(CommandBus commandBus, QueryBus queryBus, EventBus eventBus, Configurer configurer) {
+        final CorrelationLoggingInterceptor<Message<?>> interceptor = new CorrelationLoggingInterceptor<>();
+        commandBus.registerDispatchInterceptor(interceptor);
+        commandBus.registerHandlerInterceptor(interceptor);
+        queryBus.registerDispatchInterceptor(interceptor);
+        queryBus.registerHandlerInterceptor(interceptor);
+        eventBus.registerDispatchInterceptor(interceptor);
+        configurer.eventProcessing().registerHandlerInterceptor("demo.axon.query", configuration -> interceptor);
     }
 
     @Bean(name = "FoodCartSnapshotTrigger")
     public SnapshotTriggerDefinition snapshotTrigger(Snapshotter snapshotter) {
         // trigger a snapshot creation each time a given number of events occurred for a particular aggregate instance
         return new EventCountSnapshotTriggerDefinition(snapshotter, 5);
+    }
+
+    @Bean
+    public CorrelationDataProvider messageOriginProvider() {
+        return new MessageOriginProvider();
     }
 }
