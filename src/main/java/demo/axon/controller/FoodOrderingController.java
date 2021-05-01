@@ -5,11 +5,7 @@ import demo.axon.query.FoodCartView;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.responsetypes.ResponseTypes;
 import org.axonframework.queryhandling.QueryGateway;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
@@ -45,9 +41,23 @@ class FoodOrderingController {
     public void deselectProduct(@PathVariable("foodCartId") String foodCartId,
                                 @PathVariable("productId") String productId,
                                 @PathVariable("quantity") Integer quantity) {
-        commandGateway.send(new DeselectProductCommand(
-                UUID.fromString(foodCartId), UUID.fromString(productId), quantity
-        ));
+        try {
+            // by using `sendAndWait()` method on the command gateway we can catch business exception from the command handler
+            commandGateway.sendAndWait(new DeselectProductCommand(
+                    UUID.fromString(foodCartId), UUID.fromString(productId), quantity
+            ));
+        } catch (Exception e) {
+            // checked exceptions will be wrapped in o.a.c.CommandExecutionException
+            // if the command bus is a SimpleCommandBus then the cause of the exception will be the one actually thrown
+            // by the command handler. Otherwise the cause exception will be an instance of AxonServerRemoteCommandHandlingException
+            // that will contain the same error message as the one thrown by the command handler.
+            throw e;
+        }
+    }
+
+    @PostMapping("/{foodCartId}/confirm")
+    public void confirmOrder(@PathVariable("foodCartId") String foodCartId) {
+        commandGateway.send(new ConfirmOrderCommand(UUID.fromString(foodCartId)));
     }
 
     @GetMapping("/{foodCartId}")
@@ -64,5 +74,14 @@ class FoodOrderingController {
                 new FindFoodCartsQuery(),
                 ResponseTypes.multipleInstancesOf(FoodCartView.class)
         );
+    }
+
+    @DeleteMapping("/{foodCartId}")
+    public void deleteFoodCart(@PathVariable("foodCartId") String foodCartId) {
+        try {
+            commandGateway.sendAndWait(new DeleteFoodCartCommand(UUID.fromString(foodCartId)));
+        } catch (Exception e) {
+            throw e;
+        }
     }
 }

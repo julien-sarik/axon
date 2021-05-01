@@ -23,3 +23,7 @@ data class DeselectProductCommand(
 data class ConfirmOrderCommand(
         @TargetAggregateIdentifier val foodCartId: UUID
 )
+
+data class DeleteFoodCartCommand(
+        @TargetAggregateIdentifier val foodCartId: UUID
+)

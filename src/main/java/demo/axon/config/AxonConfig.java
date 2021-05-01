@@ -3,6 +3,7 @@ package demo.axon.config;
 import com.mongodb.client.MongoClient;
 import demo.axon.command.interceptor.CommandDispatchInterceptor;
 import org.axonframework.commandhandling.CommandBus;
+import org.axonframework.commandhandling.SimpleCommandBus;
 import org.axonframework.eventsourcing.EventCountSnapshotTriggerDefinition;
 import org.axonframework.eventsourcing.SnapshotTriggerDefinition;
 import org.axonframework.eventsourcing.Snapshotter;
@@ -53,5 +54,11 @@ public class AxonConfig {
     public SnapshotTriggerDefinition snapshotTrigger(Snapshotter snapshotter) {
         // trigger a snapshot creation each time a given number of events occurred for a particular aggregate instance
         return new EventCountSnapshotTriggerDefinition(snapshotter, 5);
+    }
+
+    @Bean
+    public CommandBus commandBus() {
+        // using a simple command bus instead of the default distributed command bus
+        return SimpleCommandBus.builder().build();
     }
 }

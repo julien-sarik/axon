@@ -1,14 +1,6 @@
 package demo.axon.command;
 
-import demo.axon.coreapi.ConfirmOrderCommand;
-import demo.axon.coreapi.CreateFoodCartCommand;
-import demo.axon.coreapi.DeselectProductCommand;
-import demo.axon.coreapi.FoodCartCreatedEvent;
-import demo.axon.coreapi.OrderConfirmedEvent;
-import demo.axon.coreapi.ProductDeselectedEvent;
-import demo.axon.coreapi.ProductDeselectionException;
-import demo.axon.coreapi.ProductSelectedEvent;
-import demo.axon.coreapi.SelectProductCommand;
+import demo.axon.coreapi.*;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
 import org.axonframework.modelling.command.AggregateIdentifier;
@@ -74,6 +66,11 @@ class FoodCart {
         AggregateLifecycle.apply(new OrderConfirmedEvent(foodCartId));
     }
 
+    @CommandHandler
+    public void handle(DeleteFoodCartCommand command) {
+        AggregateLifecycle.apply(new FoodCartDeletedEvent(command.getFoodCartId()));
+    }
+
     @EventSourcingHandler
     public void on(FoodCartCreatedEvent event) {
         foodCartId = event.getFoodCartId();
@@ -97,6 +94,12 @@ class FoodCart {
     @EventSourcingHandler
     public void on(OrderConfirmedEvent event) {
         confirmed = true;
+    }
+
+    @EventSourcingHandler
+    public void on(FoodCartDeletedEvent event) {
+        // mark the aggregate as deleted so that it cannot receive any command
+        AggregateLifecycle.markDeleted();
     }
 }
 
