@@ -225,6 +225,9 @@ By default Axon uses `SequentialPerAggregatePolicy` which make sure that events 
 ##### Multi-node processing
 Two processor instances with the same name will compose the same logical processor. Those processors will compete for processing events.
 A claim mechanism is used to prevent an event to be processed twice.
+Only nodes that successfully claimed a token are able to process events.
+A token is available if its owner is not set otherwise the token can only be claimed by the node corresponding to the owner.
+A token can be stolen by another node if its timestamp has not been updated since a given period (10s by default). It allows to recover if for some reason the previous owner became inactive without properly releasing the token.
 ##### Replay
 Axon allows to replay all past events (for instance to build a new view).
 To trigger a replay of events the `resetTokens()` method must be called on the `TrackingEventProcessor`.
